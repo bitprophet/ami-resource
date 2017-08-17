@@ -2,4 +2,21 @@
 set -eu -o pipefail
 exec 3>&1 1>&2
 
-cat | jq '{version}' <&0 >&3
+# Output script for ami-resource.
+# For now, assumes a preceding build task has created the actual AMI, and
+# simply exists to emit that created AMI ID to stdout so that Concourse
+# understands that ID as the 'resource version' which was created by the build
+# plan.
+# This is critical if one wants to use the 'passed' param in subsequent 'get'
+# build plan steps, or otherwise view the emitted AMI IDs in a Concourse
+# context.
+
+# Place stdin JSON in temporary file. (We don't actually do anything with this,
+# at present; see above. But why not be consistent.)
+cat | jq . <&0 > /tmp/input
+
+BUILDROOT="$1"
+
+# As documented, we expect this file to contain the same {ami: ami-id} format
+# as the other scripts deal with re: Concourse version object.
+cat $BUILDROOT/built-ami.json | jq '{version: .}' <&0 >&3

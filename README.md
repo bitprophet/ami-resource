@@ -42,16 +42,41 @@ Places the following files in the destination:
 
 *None.*
 
+### `out`: Signal that a job has created an AMI
+
+You only really need this if you want Concourse to understand that a given job
+has created a given AMI ID as a resource version. For example, if you run
+tests against an AMI and want a final, fan-in build plan step that uses `get:
+passed: [test, jobs, here]`. Or if you simply want to have useful records of
+which Concourse jobs generated which AMIs.
+
+Simple "trigger a job when a new AMI shows up" behavior doesn't require
+using this; in that case you should be using the original resource this was
+based upon.
+
+#### How it works
+
+It simply expects that the build step(s) have placed a `built-ami.json` in the
+build root, of the format `{"ami": "ami-d34db33f"}`. The ID value therein
+should be the one created by said build step, and is simply printed to stdout
+to communicate with the rest of Concourse.
+
+#### Parameters
+
+*None.*
+
 ## Example
 
-This pipeline will check for a new Ubuntu 14.04 LTS AMI in the Sydney region every hour, triggering the next step of the build plan if it finds one.
+This pipeline will check for a new Ubuntu 14.04 LTS AMI in the Sydney region
+every hour, triggering a build step which generates a new internal AMI from
+that upstream one, and then emitting the new AMI ID as the new version.
 
 ```yaml
 resource_types:
 - name: ami
   type: docker-image
   source:
-    repository: jdub/ami-resource
+    repository: bitprophet/ami-resource
 
 resources:
 - name: ubuntu-ami
@@ -73,5 +98,6 @@ jobs:
   - get: ubuntu-ami
     trigger: true
   - task: build-fresh-image
-    ...
+    file: scripts/modify-upstream-image.yml
+  - put: ubuntu-ami
 ```
