@@ -5,18 +5,20 @@ exec 3>&1 1>&2
 # Output script for ami-resource.
 # For now, assumes a preceding build task has created the actual AMI, and
 # simply exists to emit that created AMI ID to stdout so that Concourse
-# understands that ID as the 'resource version' which was created by the build
-# plan.
+# understands that ID as the 'resource version' which was created/passed by the
+# build plan.
 # This is critical if one wants to use the 'passed' param in subsequent 'get'
 # build plan steps, or otherwise view the emitted AMI IDs in a Concourse
 # context.
 
-# Place stdin JSON in temporary file. (We don't actually do anything with this,
-# at present; see above. But why not be consistent.)
+# Place stdin JSON in temporary file.
 cat | jq . <&0 > /tmp/input
-
-BUILDROOT="$1"
+# Then obtain output-dir value, or empty string otherwise (without "// empty"
+# one will still output a newline.)
+export OUTPUT_DIR=$1/$(jq -r '.params.output_dir // empty' /tmp/input)
 
 # As documented, we expect this file to contain the same {ami: ami-id} format
 # as the other scripts deal with re: Concourse version object.
-cat $BUILDROOT/built-ami.json | jq '{version: .}' <&0 >&3
+# TODO: could expect the file to have more metadata and for _us_ to be what
+# grabs the ami ID and turns it into a {version: xxx} datum.
+cat $OUTPUT_DIR/id.json | jq '{version: .}' <&0 >&3

@@ -56,14 +56,17 @@ based upon.
 
 #### How it works
 
-It simply expects that the build step(s) have placed a `built-ami.json` in the
-build root, of the format `{"ami": "ami-d34db33f"}`. The ID value therein
-should be the one created by said build step, and is simply printed to stdout
-to communicate with the rest of Concourse.
+It simply expects that some build task has placed an `id.json` in an `outputs`
+directory matching the `put`'s configured `output_dir`. `id.json` should be of
+the format `{"ami": "ami-d34db33f"}` and that ID value should be the one
+created by the build task.
+
+This JSON bob is then printed to stdout to communicate with the rest of
+Concourse.
 
 #### Parameters
 
-*None.*
+- `output_dir`: The `outputs` entry from the appropriate preceding build task.
 
 ## Example
 
@@ -98,6 +101,11 @@ jobs:
   - get: ubuntu-ami
     trigger: true
   - task: build-fresh-image
-    file: scripts/modify-upstream-image.yml
+    config:
+      inputs: ubuntu-ami
+      run: my-awesome-build-script
+      outputs: built-ami
   - put: ubuntu-ami
+    params:
+      output_dir: built-ami
 ```
